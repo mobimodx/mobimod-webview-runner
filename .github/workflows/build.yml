@@ -95,7 +95,7 @@ jobs:
         run: |
           TAG="build-$BUILD_ID"
           gh release create "$TAG" out/* --title "Build $BUILD_ID" --notes "Mobimod App Builder otomatik derleme" || gh release upload "$TAG" out/* --clobber
-          ASSETS=$(gh release view "$TAG" --json assets -q '.assets[].browser_download_url' || true)
+          ASSETS=$(gh release view "$TAG" --json assets -q '.assets[].url' || true)
           APK=$(echo "$ASSETS" | grep -E 'apk$' | grep -E 'release' | head -1); [ -z "$APK" ] && APK=$(echo "$ASSETS" | grep -E 'apk$' | head -1)
           AAB=$(echo "$ASSETS" | grep -E 'aab$' | head -1)
           echo "APK=$APK"; echo "AAB=$AAB"
