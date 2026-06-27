@@ -1,0 +1,105 @@
+name: build-app
+
+on:
+  repository_dispatch:
+    types: [build-app]
+  workflow_dispatch:
+    inputs:
+      configUrl:
+        description: "AppConfig JSON URL"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CONFIG_URL: ${{ github.event.client_payload.configUrl || github.event.inputs.configUrl }}
+      BUILD_ID: ${{ github.event.client_payload.buildId || github.run_id }}
+      PROJECT_ID: ${{ github.event.client_payload.projectId }}
+      BACKEND: ${{ secrets.BACKEND_URL }}
+      WEBHOOK_SECRET: ${{ secrets.BUILD_WEBHOOK_SECRET }}
+      STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: android-actions/setup-android@v3
+
+      - name: Fetch project config
+        run: curl -fsSL "$CONFIG_URL" -o src/app-config.json && echo "config:" && cat src/app-config.json
+
+      - run: npm ci
+      - name: Apply config (capacitor)
+        run: node scripts/apply-config.mjs
+      - name: Build web (Vite)
+        run: npm run build
+      - name: Add & sync Android
+        run: npx cap add android && npx cap sync android
+      - name: Apply config (gradle/strings)
+        env:
+          VERSION_CODE: ${{ github.event.client_payload.versionCode || github.run_number }}
+        run: node scripts/apply-config.mjs
+
+      - name: Build debug APK (always — installable, no secrets needed)
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Configure release signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+            signingConfigs {
+              release {
+                storeFile file('release.jks')
+                storePassword System.getenv('STORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+              }
+            }
+            buildTypes { release { signingConfig signingConfigs.release } }
+          }
+          EOF
+
+      - name: Build release AAB + APK
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: cd android && ./gradlew bundleRelease assembleRelease --no-daemon
+
+      - name: Collect outputs
+        run: |
+          mkdir -p out
+          BASE=android/app/build/outputs
+          NAME="${PROJECT_ID:-app}-$BUILD_ID"
+          [ -f "$BASE/apk/debug/app-debug.apk" ] && cp "$BASE/apk/debug/app-debug.apk" "out/$NAME-debug.apk" || true
+          [ -f "$BASE/apk/release/app-release.apk" ] && cp "$BASE/apk/release/app-release.apk" "out/$NAME-release.apk" || true
+          [ -f "$BASE/bundle/release/app-release.aab" ] && cp "$BASE/bundle/release/app-release.aab" "out/$NAME-release.aab" || true
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ env.BUILD_ID }}
+          path: out/*
+
+      - name: Publish release + notify backend
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="build-$BUILD_ID"
+          gh release create "$TAG" out/* --title "Build $BUILD_ID" --notes "Mobimod App Builder otomatik derleme" || gh release upload "$TAG" out/* --clobber
+          ASSETS=$(gh release view "$TAG" --json assets -q '.assets[].browser_download_url' || true)
+          APK=$(echo "$ASSETS" | grep -E 'apk$' | grep -E 'release' | head -1); [ -z "$APK" ] && APK=$(echo "$ASSETS" | grep -E 'apk$' | head -1)
+          AAB=$(echo "$ASSETS" | grep -E 'aab$' | head -1)
+          echo "APK=$APK"; echo "AAB=$AAB"
+          if [ -n "$BACKEND" ] && [ -n "$PROJECT_ID" ]; then
+            curl -fsS -X POST "$BACKEND/api/builder/projects/$PROJECT_ID/result" \
+              -H "Content-Type: application/json" -H "x-build-secret: $WEBHOOK_SECRET" \
+              -d "{\"buildId\":\"$BUILD_ID\",\"status\":\"success\",\"apkUrl\":\"$APK\",\"aabUrl\":\"$AAB\",\"message\":\"Derleme tamamlandı\"}" || true
+          fi

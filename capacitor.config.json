@@ -1,0 +1,6 @@
+{
+  "appId": "com.mobimod.app",
+  "appName": "Mobimod App",
+  "webDir": "dist",
+  "android": { "allowMixedContent": true }
+}

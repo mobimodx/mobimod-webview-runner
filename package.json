@@ -1,0 +1,29 @@
+{
+  "name": "mobimod-webview-runner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Config-driven Capacitor shell. Renders the SAME @mobimod/app-shell as the web builder preview, so the Android output is pixel-identical to the preview.",
+  "scripts": {
+    "apply-config": "node scripts/apply-config.mjs",
+    "build": "vite build",
+    "sync": "cap sync android",
+    "android:add": "cap add android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/browser": "^6.0.0",
+    "@capacitor/core": "^6.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}

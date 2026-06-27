@@ -1,0 +1,20 @@
+{
+  "app": { "name": "Mobimod App", "packageId": "com.mobimod.app", "version": "1.0.0", "iconUrl": "" },
+  "theme": { "primary": "#2563EB", "accent": "#4DABF7", "bg": "#ffffff", "surface": "#f5f8fd", "text": "#0c1b36", "navStyle": "labeled" },
+  "topBar": { "enabled": true, "title": "Mobimod App", "showLogo": false, "logoUrl": "", "bg": "#ffffff", "text": "#0c1b36", "menu": true },
+  "sideMenu": { "enabled": true, "items": [
+    { "id": "s1", "label": "Ana Sayfa", "icon": "home", "target": { "type": "page", "value": "home" } }
+  ] },
+  "bottomNav": { "enabled": true, "items": [
+    { "id": "n1", "label": "Ana Sayfa", "icon": "home", "target": { "type": "page", "value": "home" } },
+    { "id": "n2", "label": "İletişim", "icon": "phone", "target": { "type": "page", "value": "contact" } }
+  ] },
+  "pages": [
+    { "id": "home", "type": "webview", "title": "Ana Sayfa", "url": "https://www.mobimod.com", "pull": true },
+    { "id": "contact", "type": "native", "title": "İletişim", "blocks": [
+      { "id": "b1", "type": "heading", "text": "Bize Ulaşın" },
+      { "id": "b2", "type": "button", "text": "Ara", "action": { "type": "tel", "value": "+905550000000" } }
+    ] }
+  ],
+  "home": "home"
+}
