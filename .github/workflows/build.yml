@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 20 }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 17 }
       - uses: android-actions/setup-android@v3
@@ -36,7 +36,7 @@ jobs:
       - name: Fetch project config
         run: curl -fsSL "$CONFIG_URL" -o src/app-config.json && echo "config:" && cat src/app-config.json
 
-      - run: npm ci
+      - run: npm install
       - name: Apply config (capacitor)
         run: node scripts/apply-config.mjs
       - name: Build web (Vite)
