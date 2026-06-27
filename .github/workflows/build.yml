@@ -24,6 +24,7 @@ jobs:
       STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,7 +52,7 @@ jobs:
         run: cd android && ./gradlew assembleDebug --no-daemon
 
       - name: Configure release signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/release.jks
           cat >> android/app/build.gradle <<'EOF'
@@ -70,7 +71,7 @@ jobs:
           EOF
 
       - name: Build release AAB + APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: env.HAS_KEYSTORE == 'true'
         run: cd android && ./gradlew bundleRelease assembleRelease --no-daemon
 
       - name: Collect outputs
